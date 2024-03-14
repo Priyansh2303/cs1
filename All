@@ -1,0 +1,919 @@
+EXP-1:
+
+clc; close all; clear all;
+
+signal_length=1000;
+signal_1=randn(1,signal_length);
+signal_2=randn(1,signal_length);
+
+autocorr_result1=xcorr(signal_1,signal_1);
+autocorr_result2=xcorr(signal_2,signal_2);
+cross_corr= xcorr(signal_1,signal_2)
+
+lags=-(signal_length-1):(signal_length-1);
+
+figure;
+
+subplot(2,2,1);
+plot(lags,autocorr_result1);
+title('AutoCorrelation of Signal 1');
+xlabel('Time');
+ylabel('Magnitude');
+grid on;
+
+subplot(2,2,2);
+plot(lags,autocorr_result2);
+title('AutoCorrelation of Signal 2');
+xlabel('Time');
+ylabel('Magnitude');
+grid on;
+
+subplot(2,2,3);
+[psd1,frequencies1]=pwelch(signal_1);
+semilogy(frequencies1,psd1);
+title('PSD of Signal 1');
+xlabel('Frequency');
+ylabel('PSD');
+grid on;
+
+subplot(2,2,4);
+[psd2,frequencies2]=pwelch(signal_2);
+semilogy(frequencies2,psd2);
+title('PSD of Signal 2');
+xlabel('Frequency');
+ylabel('PSD');
+grid on;
+
+figure(2);
+plot(lags,cross_corr);
+title('CrossCorrelation of Signal 2');
+xlabel('Time');
+ylabel('Magnitude');
+grid on;
+____________________________________
+
+LOWPASS SAMPLING
+
+N = 1000; % The maximum value of n
+M = 50;
+Rxav = zeros(1, M + 1);
+Ryav = zeros(1, M + 1);
+Sxav = zeros(1, M + 1);
+Syav = zeros(1, M + 1);
+% Perform ensemble averaging over ten realizations
+for i = 1:10
+ X = rand(1, N) - (1/2);
+ Y(1) = 0;
+ 
+ % Generate Y(n) using a first-order autoregressive process
+ for n = 2:N
+ Y(n) = 0.9 * Y(n - 1) + X(n);
+ end
+ 
+ % Compute autocorrelations of X(n) and Y(n)
+ Rx = Rx_est(X, M);
+ Ry = Rx_est(Y, M);
+ 
+ % Compute power spectra of X(n) and Y(n)
+ Sx = fftshift(abs(fft(Rx)));
+ Sy = fftshift(abs(fft(Ry)));
+ 
+ % Accumulate results for ensemble averaging
+ Rxav = Rxav + Rx;
+ Ryav = Ryav + Ry;
+ Sxav = Sxav + Sx;
+ Syav = Syav + Sy;
+end
+% Average over the ten realizations
+Rxav = Rxav / 10;
+Ryav = Ryav / 10;
+Sxav = Sxav / 10;
+Syav = Syav / 10;
+% Display results
+disp('Ensemble Average Autocorrelation of X:');
+disp(Rxav);
+disp('Ensemble Average Autocorrelation of Y:');
+disp(Ryav);
+disp('Ensemble Average Power Spectrum of X:');
+disp(Sxav);
+disp('Ensemble Average Power Spectrum of Y:');
+disp(Syav);
+% Plot Ensemble Average Autocorrelations and Power Spectra
+figure;
+% Plot Ensemble Average Autocorrelations
+subplot(2, 1, 1);
+plot(0:M, Rxav, 'DisplayName', 'X(n)');
+title('Ensemble Average Autocorrelations');
+xlabel('Lag');
+ylabel('Autocorrelation');
+legend;
+subplot(2, 1, 2);
+plot(0:M, Ryav, 'DisplayName', 'Y(n)');
+title('Ensemble Average Autocorrelations');
+xlabel('Lag');
+ylabel('Autocorrelation');
+legend;
+figure;
+% Plot Ensemble Average Power Spectra
+subplot(2, 1, 1);
+frequencies = linspace(-0.5, 0.5, M + 1);
+plot(frequencies, Sxav, 'DisplayName', 'X(n)');
+title('Ensemble Average Power Spectra');
+xlabel('Normalized Frequency');
+ylabel('Power Spectral Density');
+legend;
+subplot(2, 1, 2);
+plot(frequencies, Syav, 'DisplayName', 'Y(n)');
+title('Ensemble Average Power Spectra');
+xlabel('Normalized Frequency');
+ylabel('Power Spectral Density');
+legend;
+% Autocorrelation estimation function
+function [Rx] = Rx_est(X, M)
+ N = length(X);
+ Rx = zeros(1, M + 1);
+ 
+ for m = 1:M + 1
+ for n = 1:N - m + 1
+ Rx(m) = Rx(m) + X(n) * X(n + m - 1);
+ end
+ Rx(m) = Rx(m) / (N - m + 1);
+ end
+end
+___________________________________
+
+BANDPASS SAMPLING
+
+N = 1000; % number of samples
+for i = 1:2:N
+ % Your loop body is currently empty. If you have code to include here, add it.
+end
+m = 0;
+sgma = 1;
+% Initialize arrays to store Gaussian random variables
+Xl = zeros(1, N);
+X2 = zeros(1, N);
+% Generate Gaussian random variables
+for i = 1:2:N
+ [Xl(i), Xl(i + 1)] = gngauss(m, sgma);
+ [X2(i), X2(i + 1)] = gngauss(m, sgma);
+end
+% Initialize filter coefficients
+A = [1, -0.9];
+B = 1;
+% Filter the Gaussian random variables
+Xc = filter(B, A, Xl);
+Xs = filter(B, A, X2);
+% Bandpass modulation
+fc = 1000 / pi;
+band_pass_process = zeros(1, N);
+for i = 1:N
+ band_pass_process(i) = Xc(i) * cos(2 * pi * fc * i) - Xs(i) * sin(2 * pi * fc 
+* i);
+end
+% Determine the autocorrelation and the spectrum of the bandpass process
+M = 50;
+bpp_autoco = Rx_est(band_pass_process, M);
+bpp_spectrum = fftshift(abs(fft(bpp_autoco)));
+% Plotting commands
+figure;
+subplot(2, 1, 1);
+plot(0:M, bpp_autoco);
+title('Autocorrelation of Bandpass Process');
+xlabel('Lag');
+ylabel('Autocorrelation');
+subplot(2, 1, 2);
+frequencies = linspace(-0.5, 0.5, M + 1);
+plot(frequencies, bpp_spectrum);
+title('Power Spectral Density of Bandpass Process');
+xlabel('Normalized Frequency');
+ylabel('Power Spectral Density');
+% Function to generate Gaussian random variables
+function [gsrvl, gsrv2] = gngauss(m, sgma)
+ u = rand;
+ z = sgma * (sqrt(2 * log(1 / (1 - u))));
+ u = rand;
+ gsrvl = m + z * cos(2 * pi * u);
+ gsrv2 = m + z * sin(2 * pi * u);
+end
+% Autocorrelation estimation function
+function [Rx] = Rx_est(X, M)
+ N = length(X);
+ Rx = zeros(1, M + 1);
+ 
+ for m = 1:M + 1
+ for n = 1:N - m + 1
+ Rx(m) = Rx(m) + X(n) * X(n + m - 1);
+ end
+ Rx(m) = Rx(m) / (N - m + 1);
+ end
+end
+______________________________________
+
+
+EXP-2:
+
+Part-1
+
+clc; close all; clear all;
+%Number of dice rolls
+numRolls = 10000;
+
+% Simulate rolling two dice and calculate the sum
+diceSum = randi([1, 6], numRolls, 100);
+sumValues = sum(diceSum, 2);
+
+% Calculate the probability distribution
+numOutcomes = 100 * 6; % Possible outcomes for hundred dice
+probDistribution = histcounts(sumValues, 2:numOutcomes+1) / numRolls;
+
+% Plotting
+bar(2:numOutcomes, probDistribution);
+title('Central Limit Theorem: N=100 Dice');
+xlabel('Possibel Outcomes');
+ylabel('Probability');
+
+
+PART-2 
+%Number of coin Tosses
+numToss = 10000;
+
+% Simulate tossing 2 coins and calculate the sum
+CoinSum = randi([1, 2], numToss, 100);
+sumValues = sum(CoinSum, 2);
+
+% Calculate the probability distribution
+numOutcomes = 100 * 2; % Possible outcomes for hundred coins
+probDistribution = histcounts(sumValues, 2:numOutcomes+1) / numToss;
+
+% Plotting
+bar(2:numOutcomes, probDistribution);
+title('Central Limit Theorem: N=100 coins');
+xlabel('Possibel Outcomes');
+ylabel('Probability');
+
+
+
+________________________
+
+EXP-3:
+
+
+%  To verify the sampling theorem in frequency domain 
+%definiton of variables
+%xanalog           :Given analog signal%xsampled          :Sampled version of xanalog
+%xsampled_DFT      :DFT of sampled signal   %tsamp             :sampling interval(spacing between any two samples)%xsampled_length   :no. of samples of analog signal collected
+%xreconstructed    :sampled sequence in time domain
+%fs:samplimg frequency(samples/second)
+%t                 :time duration in which the analog signal exist (0 to 0.01(tfinal) in this program)
+%fm               :The highest frequency(700 Hz) contained in the analog signalsampling in time domain results in periodic components infrequency domain centered at nfs, where n=.... -3,-2,-1,1,2 %3,.....sampling in frequency domain can also be used to %analyze aliasing effect
+
+tfinal=0.01;
+t=0:0.00001:tfinal;
+xanalog=cos(2*pi*400*t)+cos(2*pi*700*t);
+%critical sampling  fs=2fm(fm=700)
+fs=1400;%Note that samples will repeat after 13/fs,hence its %sufficient if we consider first 14 samples(0 to 13) of analog %signal (observe the figures given previously)
+
+tsamp=0:1/fs:13/fs;
+xsampled=cos(2*pi*400*tsamp)+cos(2*pi*700*tsamp);%calculate 14 point DFT of sampled signal. abs(...) is %required because plot function displays only real values
+
+xsampled_DFT=abs(fft(xsampled));
+xsampled_length=0:length(xsampled_DFT)-1;
+
+figure(1);subplot(6,1,1);stem(100*xsampled_length,xsampled_DFT);
+xlabel('Frequency');ylabel('Magnitude');title('Critical Sampling (fs=2fm)');
+
+xreconstructed=ifft(fft(xsampled)); %To reconstruct the signal, ifft(...) can be  used.
+subplot(6,1,2);plot(tsamp,xreconstructed,'b*-');
+xlabel('Time');ylabel('Amplitude');title('Critical Sampling (fs=2fm)');
+
+ %Under Sampling(fs<2fm)
+fs=700;%Note that samples will repeat after 6/fs,hence its sufficientif we consider first 7 samples(0 to 6) of analog signal
+tsamp=0:1/fs:6/fs;
+xsampled=cos(2*pi*400*tsamp)+cos(2*pi*700*tsamp);
+xsampled_DFT=abs(fft(xsampled)); %calculate 7 point DFT of sampled signal.
+xsampled_length=0:length(xsampled_DFT)-1;
+subplot(6,1,3);stem(100*xsampled_length,xsampled_DFT)
+xlabel('Frequency');ylabel('Magnitude');title('Under Sampling (fs<2fm)');
+
+xreconstructed=ifft(fft(xsampled)); %To reconstruct the signal, ifft(...) can be  used.
+subplot(6,1,4);plot(tsamp,xreconstructed,'b*-');
+xlabel('Time');ylabel('Amplitude');title('Under Sampling (fs<2fm)');
+
+%over Sampling(fs>2fm)
+fs=2000;%Note that samples will repeat after 19/fs,hence its %sufficient if we consider first 20 %samples(0 to 19) of analog %signal
+tsamp=0:1/fs:19/fs;
+xsampled=cos(2*pi*400*tsamp)+cos(2*pi*700*tsamp);%calculate 20 point DFT of sampled %signal.
+xsampled_DFT=abs(fft(xsampled));
+xsampled_length=0:length(xsampled_DFT)-1;
+
+subplot(6,1,5);stem(100*xsampled_length,xsampled_DFT)
+xlabel('Frequency');ylabel('Magnitude');title('Over Sampling (fs>2fm)');
+
+xreconstructed=ifft(fft(xsampled));
+subplot(6,1,6);plot(tsamp,xreconstructed,'b*-');
+xlabel('Time');ylabel('Amplitude');title('Over Sampling (fs>2fm)');
+
+_________________________________________________
+
+
+EXP-5
+
+UNIFORM QUANTIZATION
+
+echo on
+t=0:0.01:10;
+a=sin(t);
+[sqnr8,aquan8,code8] = u_pcm(a,8);
+[sqnr16,aquan16,code16] = u_pcm(a,16);
+display(sqnr8);
+display(sqnr16);
+plot(t,a,'-',t,aquan8,'-.',t,aquan16,'-',t,zeros(1,length(t)));
+legend('Original Signal','8 Level Quantized Signal','16 Level Quantized Signal');
+
+function [sqnr, a_quan, code] = u_pcm(a, n)
+    amax = max(abs(a));
+    a_quan = a/amax;
+    b_quan = a_quan;
+    d = 2/n;
+    q = d.*[0:n-1];
+    q = q-((n-1)/2)*d;
+    
+    for i=1:n
+        a_quan(find((q(i)-d/2<=a_quan)&(a_quan<=q(i)+d/2)))=q(i).*ones(1,length(find((q(i)-d/2<=a_quan)&(a_quan<=q(i)+d/2))));
+        b_quan(find(a_quan==q(i)))=(i-1).*ones(1,length(find(a_quan==q(i))));
+    end
+    
+    a_quan=a_quan*amax;
+    nu=ceil(log2(n));
+    code=zeros(length(a),nu);
+    
+    for i=1:length(a)
+        for j=nu:-1:0
+            if(fix(b_quan(i)/(2^j))==1)
+                code(i,(nu-j))=i;
+                b_quan(i)=b_quan(i)-2^j;
+            end
+        end
+    end
+    
+    sqnr=20*log10(norm(a)/norm(a-a_quan));
+end
+
+__________________________________________________
+
+
+NON UNIFORM QUANTIZATION
+
+t=0:0.01:10;
+a=sin(t);
+[sqnr,aquan,code] = mula_pcm(a,16,255);
+display(sqnr);
+plot(t,a,'-',t,aquan,'-.');
+legend('Original Signal','Quantized Signal');
+function [sqnr, a_quan, code] = u_pcm(a, n)
+    amax = max(abs(a));
+    a_quan = a/amax;
+    b_quan = a_quan;
+    d = 2/n;
+    q = d.*[0:n-1];
+    q = q-((n-1)/2)*d;
+    
+    for i=1:n
+        a_quan(find((q(i)-d/2<=a_quan)&(a_quan<=q(i)+d/2)))=q(i).*ones(1,length(find((q(i)-d/2<=a_quan)&(a_quan<=q(i)+d/2))));
+        b_quan(find(a_quan==q(i)))=(i-1).*ones(1,length(find(a_quan==q(i))));
+    end
+    
+    a_quan=a_quan*amax;
+    nu=ceil(log2(n));
+    code=zeros(length(a),nu);
+    
+    for i=1:length(a)
+        for j=nu:-1:0
+            if(fix(b_quan(i)/(2^j))==1)
+                code(i,(nu-j))=i;
+                b_quan(i)=b_quan(i)-2^j;
+            end
+        end
+    end
+    
+    sqnr=20*log10(norm(a)/norm(a-a_quan));
+
+end     
+    function [sqnr,a_quan,code]=mula_pcm(a,n,mu)
+    [y,maximum]=mulaw(a,mu);
+    [sqnr,y_q,code]=u_pcm(y,n);
+    a_quan=invmulaw(y_q,mu);
+    a_quan=maximum*a_quan;
+    sqnr=20*log10(norm(a)/norm(a-a_quan));
+    end
+    function [y,a]=mulaw(x,mu)
+    a=max(abs(x));
+    y=(log(1+mu*abs(x/a))./log(1+mu)).*sign(x);
+    end
+    function x=invmulaw(y,mu)
+    x=(((1+mu).^(abs(y))-1)./mu).*sign(y);
+    end
+____________________________________________
+
+
+EXP-6
+
+Part-1: DELTA MODULATION
+
+clc
+clear all
+close all
+
+a=2;
+t=0:2*pi/50:2*pi;
+x=a*sin(t);
+l=length(x);
+plot(x,'r');
+delta=0.6;
+hold on;
+xn=0;
+
+for i=1:l
+    if x(i)>xn(i)
+        d(i)=1;
+        xn(i+1)=xn(i)+delta;
+    else
+        d(i)=0;
+        xn(i+1)=xn(i)-delta;
+    end
+end
+
+stairs(xn);
+hold on;
+
+for i=1:d
+0
+    if d(i)>xn(i)
+        d(i)=0;
+        xn(i+1)=xn(i)-delta;
+    else
+        d(i)=1;
+        xn(i+1)=xn(i)+delta;
+    end
+end
+
+plot(xn,'c');
+title('Step Size of 0.2');
+xlabel('Time');
+ylabel('Amplitude');
+legend('Original Signal','Delta Modulated Signal','Demodulated Signal');
+
+______________________________________________________
+
+
+PART 2: ADAPTIVE DELTA MODULATION
+
+clc;
+close all;
+clear all;
+
+td=0.002;
+t=[0:td:1];
+xsig=sin(2*pi*t)-sin(6*pi*t);
+ts=0.2;
+delta=0.2*8;
+Lsig=length(xsig);
+if(rem(ts/td,1)==0)
+    nfac=round(ts/td);
+    p_zoh=ones(1,nfac);
+    s_down=downsample(xsig,nfac);
+    Num_it=length(s_down);
+    s_DMout(1)=delta/2;
+    for k=2:Num_it
+        xvar=s_DMout(k-1);
+        s_DMout(k)=xvar+delta*sign(s_down(k-1)-xvar);
+    end
+    S_DMout=kron(s_DMout,p_zoh);
+else
+    S_DMout=[];
+end
+
+figure(1);
+sfig1=plot(t,xsig,'k',t,S_DMout(1:Lsig),'b');
+set(sfig1,'LineWidth',2);
+
+ADM SABA MAMS CODE
+
+close all
+clear all
+clc
+td = 0.01;
+ts = 0.02;
+t = 0:td:5;
+sig_in= 8*sin(2*pi*t);
+Delta = 0.1;
+figure(1)
+plot(t,sig_in)
+
+if (round(ts/td) >= 2)
+ Nfac = round(ts/td); %Nearest integer
+ xsig = downsample(sig_in,Nfac);
+ Lxsig = length(xsig);
+ Lsig_in = length(sig_in);
+ 
+ ADMout = zeros(Lsig_in); %Initialising output
+ 
+ cnt1 = 0; %Counters for no. of previous consecutively increasing 
+ cnt2 = 0; %steps
+ sum = 0;
+ for i=1:Lxsig
+ 
+ if (xsig(i) == sum)
+ elseif (xsig(i) > sum)
+ if (cnt1 < 2)
+ sum = sum + Delta; %Step up by Delta, same as in DM
+ elseif (cnt1 == 2)
+ sum = sum + 2*Delta; %Double the step size after
+ %first two increase
+ elseif (cnt1 == 3)
+ sum = sum + 4*Delta; %Double step size
+ else
+ sum = sum + 8*Delta; %Still double and then stop
+ %doubling thereon
+ end
+ if (sum < xsig(i))
+ cnt1 = cnt1 + 1;
+ else
+ cnt1 = 0;
+ end
+ else
+ if (cnt2 < 2)
+ sum = sum - Delta;
+ elseif (cnt2 == 2)
+ sum = sum - 2*Delta;
+ elseif (cnt2 == 3)
+ sum = sum - 4*Delta;
+ else
+ sum = sum - 8*Delta;
+ end
+ if (sum > xsig(i))
+ cnt2 = cnt2 + 1;
+ else
+ cnt2 = 0;
+ end
+ end
+ ADMout(((i-1)*Nfac + 1):(i*Nfac)) = sum;
+ end
+end
+figure(2)
+ plot(t,ADMout);
+
+________________________________________________  
+
+EXP 7: SIGMA DELTA MODULATION
+
+clc;close all;clear all;
+t=-5:0.01:5;
+f=2;
+w=2*pi*f;
+osr=250;
+fs1=w/pi;
+fs=fs1*osr;
+ts=-5:(1/fs):5;
+y=@(t)sin(w.*t);
+[u,q]=SDQ(y(ts),ts);
+z=0;
+for k=1:length(ts)
+    z=z+q(k).*sinc(w.*(t-ts(k)));
+end
+c=max(y(t))./max(z);
+figure(1)
+subplot(3,1,1)
+plot(t,y(t),'linewidth',2)
+title('original signal')
+xlabel('time')
+ylabel('amp')
+subplot(3,1,2)
+plot(ts,q)
+title('SDQ signal')
+xlabel('time')
+ylabel('amp')
+subplot(3,1,3)
+plot(t,z,'linewidth',2)
+title('reconstructed signal')
+xlabel('time')
+ylabel('amp')
+figure(2)
+plot(t,y(t),'linewidth',2)
+hold on
+plot(t,z,'linewidth',2)
+title('original vs reconstructed')
+figure(3)
+plot(abs(z-y(t)),'linewidth',2);
+title('error');
+figure(4);
+subplot(3,1,1)
+plot(abs(fftshift(fft(y(t)))));
+xlabel('frequency')
+ylabel('amp')
+title('spectrum of original signal')
+subplot(3,1,2)
+plot(abs(fftshift(fft(q))))
+xlabel('freq')
+ylabel('amp')
+title('spectrum of SDQ')
+subplot(3,1,3)
+plot(abs(fftshift(fft(z))))
+title('spectrum of recovered signal')
+xlabel('freq')
+ylabel('amp')
+error=immse(z,y(t));
+function[u,q]=SDQ(y,t)
+q=zeros(1,length(t));
+u=zeros(1,length(t));
+u(1)=0.9;
+for k=2:length(t)
+    q(k)=sign(u(k-1)+y(k));
+    u(k)=u(k-1)+y(k)-q(k);
+end
+end
+
+____________________________________________
+
+EXP 8: LINE CODES, PSD, PE
+
+%Input parameters
+N= 10; % Number of input bits
+a=floor(2*rand (1,N)) % generates random 1's and zero's and displays
+A=5; % Pulse amplitude
+Tb=1; %bit period
+fs=100; % Number of samples (even number) taken in a bitperiod
+%Unipolar NRZ
+U=[];
+for k=1:N
+U = [U A*a(k)*ones(1,fs)];
+end
+%Unipolar RZ
+U_rz=[];
+for k=1:N
+c = ones(1,fs/2);
+b = zeros(1,fs/2);
+p = [c b];
+U_rz = [U_rz A*a(k)*p];
+end
+%Polar NRZ
+P=[];
+for k=1:N
+P = [P ((-1)^(a(k) + 1))*A*ones(1,fs)];
+end
+%Polar RZ
+P_rz=[];
+for k = 1:N
+c = ones(1,fs/2);
+b = zeros(1,fs/2);
+p = [c b];
+P_rz = [P_rz ((-1)^(a(k)+1))*A*p];
+end
+%Bipolar NRZ
+B=[];
+count=-1;
+for k= 1:N
+if a(k)==1
+if count==-1
+B = [B A*a(k)*ones(1,fs)];
+count=1;
+else
+B = [B -A*a(k)*ones(1,fs)];
+count=-1;
+end
+else
+B = [B A*a(k)*ones(1,fs)];
+end
+end
+%Bipolar RZ / AMI RZ
+B_rz=[];
+count=-1;
+for k= 1:N
+if a(k)==1
+if count==-1
+B_rz = [B_rz A*a(k)*ones(1,fs/2) zeros(1,fs/2)];
+count=1;
+else
+B_rz = [B_rz -A*a(k)*ones(1,fs/2) zeros(1,fs/2)];
+count=-1;
+end
+else
+B_rz = [B_rz A*a(k)*ones(1,fs)];
+end
+end
+%Split-phase or Manchester code
+M=[];
+for k = 1:N
+c = ones(1,fs/2);
+b = -1*ones(1,fs/2);
+p = [c b];
+M = [M ((-1)^(a(k)+1))*A*p];
+end
+T = linspace(0,N*Tb, length(U));% Time vector % Lengths of all codes are same
+figure(1)
+subplot(4, 1, 1); plot(T,U,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Unipolar NRZ')
+grid on
+subplot(4, 1, 2); plot(T,U_rz,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Unipolar RZ')
+grid on
+subplot(4, 1, 3); plot(T,P,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Polar NRZ')
+grid on
+subplot(4, 1, 4); plot(T,P_rz,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Polar RZ')
+grid on
+figure(2)
+subplot(3, 1, 1); plot(T,B,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Bipolar NRZ')
+grid on
+subplot(3, 1, 2); plot(T,B_rz,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Bipolar RZ / RZ-AMI')
+grid on
+subplot(3, 1, 3); plot(T,M,'LineWidth',2)
+axis([0 N*Tb -6 6])
+title('Manchester code')
+grid on
+
+
+EASIER WAY
+
+m = [0 1 0 0 1 1 1 1 0 0 1];
+n = length(m);
+x=[]; y=[];
+for i=1:n
+    x=[x i-1 i-1+0.5 i-1+0.5 i];
+    if(m(i)==0)
+        y=[y 0 0 0 0];
+    else
+        y=[y 1 1 0 0];
+    end
+end
+
+plot(x,y),axis([0,n,-2,2]);
+title('Unipolar RZ');
+
+
+________________________________________
+
+PSD
+
+v = 1;   % Voltage level of a bit
+R = 1;   % Bitrate
+T = 1/R; % Bit period
+f = 0:0.001*R:2*R; % Frequency vector in terms of bit rate
+f = f + 1e-10; % Avoid division by zero in the sinusoid
+f_zero = 1e-9;   % Small offset for the frequency component at f=0
+
+% PSD curves are plotted for Bitrate=1 bps and Pulse amplitude=1 V
+
+% Unipolar NRZ
+s_unipolar_nrz = (v^2 * T/4) * (sin(pi * f * T) ./ (pi * f * T)).^2;
+s_unipolar_nrz(1) = s_unipolar_nrz(1) + (v^2 / 4) + f_zero; % Add impulse at f=0
+
+figure;
+stem(f_zero, s_unipolar_nrz(1), 'or', 'LineWidth', 2, 'MarkerSize', 8); % Impulse at f=0
+hold on;
+plot(f, s_unipolar_nrz, '-r', 'LineWidth', 2);
+
+% Manchester code
+s_manchester = (v^2 * T) * ((sin(pi * f * T/2) ./ (pi * f * T/2)).^2) .* (sin(pi * f * T/2).^2);
+plot(f, s_manchester, '--g', 'LineWidth', 2);
+
+% Polar NRZ
+s_polar_nrz = (v^2 * T) * (sin(pi * f * T) ./ (pi * f * T)).^2;
+plot(f, s_polar_nrz, '--b', 'LineWidth', 2);
+
+% Bipolar RZ
+s_bipolar_rz = (v^2 * T/4) * ((sin(pi * f * T/2) ./ (pi * f * T/2)).^2) .* (sin(pi * f * T).^2);
+plot(f, s_bipolar_rz, '--k', 'LineWidth', 2);
+
+legend('Unipolar NRZ: impulse at f=0', 'Unipolar NRZ', 'Manchester code', 'Polar NRZ', 'Bipolar RZ / RZ-AMI');
+xlabel('Normalized frequency');
+ylabel('Power spectral density');
+title('Power Spectral Density for Different Line Codes');
+
+___________________________________________________________________
+
+
+Probability Of Error
+
+% The probability of error, for equally likely data, with AWGN and matched filter
+E = 0:1:25; % Eb/N0 = SNR of the received signal
+
+% Unipolar NRZ
+P1 = (1/2) * erfc(sqrt(E/2));
+
+% Polar NRZ and Manchester code have the same Pe for equiprobable 1's and 0's
+P2 = (1/2) * erfc(sqrt(E));
+
+% Bipolar RZ / RZ-AMI
+P3 = (3/4) * erfc(sqrt(E/2));
+
+E_dB = 10 * log10(E); % SNR in dB
+
+figure;
+semilogy(E_dB, P1, '-k', E_dB, P2, '-r', E_dB, P3, '-b', 'LineWidth', 2);
+legend('Unipolar NRZ', 'Polar NRZ and Manchester', 'Bipolar RZ / RZ-AMI', 'Location', 'best');
+xlabel('SNR per bit, Eb/No (dB)');
+ylabel('Bit error probability Pe');
+title('Bit Error Probability for Different Digital Communication Schemes in AWGN');
+grid on;
+
+
+_______________________________________________________________
+
+
+EXP 9: FIR FILTER
+
+#include“dsk6416_aic23.h” //support file for codec, DSK
+Uint32 fs=DSK6416_AIC23_FREQ_8KHZ; //set sampling rate
+#define DSK6416_AIC23_INPUT_MIC 0x0015
+#define DSK6416_AIC23_INPUT_LINE 0x0011
+Uint16 inputsource=DSK6416_AIC23_INPUT_LINE; // select input
+#include <math.h>; //for performing modulation operation
+static short in_buffer[100];
+Uint32 sample_data;
+short k=0;
+
+float filter_Coeff[] = { -0.0017, 0.0000,0.0029,-0.0000,-0.0067, 0.0000, 0.0141,-0.0000,-
+0.0268, 0.0000, 0.0491,-0.0000,-0.0969,0.0000,0.3156, 0.5008,0.3156, 0.0000,-0.0969,-
+0.0000, 0.0491,0.0000,-0.0268,-0.0000,0.0141, 0.0000,-0.0067,-0.0000, 0.0029, 0.0000,-
+0.0017};
+// for fc=2KHz
+short l_input, r_input,l_output, r_output;
+void comm_intr();
+void output_left_sample(short);
+short input_left_sample();
+signed int FIR_FILTER(float *h, signed int);
+interrupt void c_int11() //interrupt service routine
+{
+l_input = input_left_sample(); //inputs data
+l_output=(Int16)FIR_FILTER(filter_Coeff ,l_input);
+output_left_sample(l_output);
+return;
+} // end of interrupt routine
+signed int FIR_FILTER(float * h, signed int x)
+{
+int i=0;
+signed long output=0;
+in_buffer[0] = x; /* new input at buffer[0] */
+for(i=31;i>0;i--)
+in_buffer[i] = in_buffer[i-1]; /* shuffle the buffer */
+for(i=0;i<31;i++)
+output = output + h[i] * in_buffer[i];
+return(output);
+}
+void main()
+{
+comm_intr(); //init DSK, codec, McBSP
+while(1);
+}
+
+MATLAB COMMAND:
+fir1(30,2*400/8000,hamming(31))
+________________________________________________________
+
+
+EXP 10: IIR FILTER
+
+#include”DSK6713_AIC23”; //codec-DSK interface support
+Uint32 fs=DSK6713_AIC23_FREQ_8KHZ;//set sampling rate
+#define DSK6713_AIC23_INPUT_MIC 0x0015
+#define DSK6713_AIC23_INPUT_LINE 0x0011
+Uint16 inputsource=DSK6713_AIC23_INPUT_LINE;
+#include”bs1800int.cof”;
+short input_left_sample();
+void output_left_sample(short);
+void comm_intr();
+short w[NUM_SECTIONS][2] = {0};
+interrupt void c_int11() //interrupt service routine
+{
+short section; // index for section number
+short input; // input to each section
+int wn,yn; // intermediate and output values in each stage
+input = input_left_sample();
+for (section=0 ; section< NUM_SECTIONS ; section++)
+{
+wn = input - ((a[section][0]*w[section][0])&>>;15) - ((a[section][1]*w[section][1])&>>15);
+yn = ((b[section][0]*wn)&>>15) + ((b[section][1]*w[section][0])&>>15) +
+((b[section][2]*w[section][1])&>>15);
+w[section][1] = w[section][0];
+w[section][0] = wn;
+input = yn; // output of current section will be input to next
+}
+output_left_sample((short)(yn)); // before writing to codec
+return; //return from ISR
+}
+void main()
+{
+comm_intr(); //init DSK, codec, McBSP
+while(1); //infinite loop
+}
